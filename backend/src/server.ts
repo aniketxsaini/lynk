@@ -1,12 +1,14 @@
-import express,{Request,Response} from "express";
-const server = express();
-server.use(express.json());
+import app from "./app.js";
+import {connectToMongoDB} from "./config/mongodb.config.js"
+const PORT = process.env.PORT || 3000;
 
-server.get('/',(req:Request,res:Response)=>{
-res.json({status:"ok"});
-})
-
-server.listen(3000,()=>{
+const serverStart = async()=>{
+    await connectToMongoDB();
+    app.listen(PORT,()=>{
     console.log("server is now running ");
 });
+};
+
+serverStart();
+
 
