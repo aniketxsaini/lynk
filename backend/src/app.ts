@@ -1,9 +1,11 @@
 import express,{Request,Response} from "express";
 export const app = express();
 import userRoute from "./routes/user.route.js";
+import urlRoute from "./routes/url.route.js"
 app.use(express.json());
 
 app.use('/user',userRoute);
+app.use('/api',urlRoute);
 
 app.get('/health',(req:Request,res:Response)=>{
 res.json({status:"ok health check"});
