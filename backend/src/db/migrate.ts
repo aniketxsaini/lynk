@@ -26,7 +26,7 @@ const runMigrations = async()=>{
         console.log(`${file} completed`);
     }
 
-    await pool.end;
+    await pool.end();
 };
 runMigrations().catch((error)=>{
     console.log(error);
