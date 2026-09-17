@@ -2,7 +2,7 @@ import app from "./app.js";
 import {connectToMongoDB} from "./config/mongodb.config.js";
 import {pool} from "./config/pg.config.js";
 import redis from "./config/redis.js";
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3000;
 
 const serverStart = async()=>{
     await pool.connect();
