@@ -107,15 +107,26 @@ export const deleteUrlController = async(
 )=>{
     try{
         const shortCode = req.params.shortCode;
+        const userId = req.userId;
         if(!shortCode){
             return res.status(400).json({
                 message:'please provide url id to delete',
             });
         }
+        if(!userId){
+            return res.status(400).json({
+                message:"authentication required please loggin",
+            })
+        }
         const url = await Urls.findOne({shortCode});
         if(!url){
             return res.status(400).json({
                 message:"given url not found",
+            });
+        }
+        if(userId!==url.userId){
+            return res.status(400).json({
+                message:"you are not authorized to perform this task",
             });
         }
         const redisCache = await redis.get(`url:${shortCode}`);
