@@ -4,7 +4,7 @@ import {createShortUrlController,urlRedirectController,deleteUrlController} from
 import {authMiddleware} from "../middlewares/auth.middleware.js"
 router.post('/short',authMiddleware,createShortUrlController);
 router.get('/get/:shortCode',urlRedirectController);
-router.delete('/delete/:shortCode',deleteUrlController);
+router.delete('/delete/:shortCode',authMiddleware,deleteUrlController);
 export default router;
 
 
