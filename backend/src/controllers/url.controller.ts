@@ -3,6 +3,7 @@ import {genrateShortCode} from "../utils/genrateShortCode.utils.js"
 import mongoose from "mongoose";
 import {Urls} from '../models/url.model.js';
 import { url } from "node:inspector";
+import redis from "../config/redis.js";
 export const createShortUrlController = async(
     req:Request,
     res:Response
@@ -33,6 +34,13 @@ export const createShortUrlController = async(
             userId,
         });
         await newUrl.save();
+        await redis.set(
+            `url:${shortCode}`,
+            originalUrl!,
+            {
+                EX:86400,
+            }
+        );
 
         console.log(newUrl);
 
@@ -58,13 +66,30 @@ export const urlRedirectController = async(
                 message:"Short code is required",
             });
         }
-        //const url = await Urls.findOne({shortCode});
-        const url = await Urls.findOneAndUpdate({shortCode:shortCode},{$inc:{clicks:1}},{new:true});
+        const cachedUrl = await redis.get(`url:${shortCode}`);
+        if(cachedUrl){
+            console.log(`redis cache HIT url:${shortCode}`);
+            await redis.incr(`clicks:${shortCode}`);
+            await redis.sAdd("pending:clicks",shortCode);
+            return res.redirect(cachedUrl!);
+        }else{
+            console.log(`redis cache MISS url:${shortCode}`)
+        }
+        const url = await Urls.findOne({shortCode:shortCode});
         if(!url){
             return res.status(401).json({
                 message:"Short URL not found",
             });
         }
+        await redis.set(
+            `url:${shortCode}`,
+            url.originalUrl!,
+            {
+                EX:86400,
+            }
+        )
+        await redis.incr(`clicks:${shortCode}`);
+        await redis.sAdd("pending:clicks",shortCode);
         console.log(url.originalUrl);
         return res.redirect(url.originalUrl!);
 
