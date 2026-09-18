@@ -128,7 +128,9 @@ export const deleteUrlController = async(
             await Urls.updateOne({shortCode},{$inc:{clicks:Number(pendingClicks)}});
             redis.del(`clicks:${shortCode}`);
             console.log(`${Number(pendingClicks)} pending clicks deleted for ${shortCode}`);
-        } 
+        }
+        await Urls.deleteOne({shortCode});
+        console.log("url deleted from database");
         return res.status(200).json({
             message:`succesfully deleted ${shortCode}`
         });
