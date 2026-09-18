@@ -100,3 +100,44 @@ export const urlRedirectController = async(
         });
     }
 };
+
+export const deleteUrlController = async(
+    req:Request,
+    res:Response
+)=>{
+    try{
+        const shortCode = req.params.shortCode;
+        if(!shortCode){
+            return res.status(400).json({
+                message:'please provide url id to delete',
+            });
+        }
+        const url = await Urls.findOne({shortCode});
+        if(!url){
+            return res.status(400).json({
+                message:"given url not found",
+            });
+        }
+        const redisCache = await redis.get(`url:${shortCode}`);
+        if(redisCache){
+            await redis.del(`url:${shortCode}`);
+            console.log(`cache deleted ${redisCache}`);
+        }
+        const pendingClicks=await redis.get(`clicks:${shortCode}`);
+        if(pendingClicks){
+            await Urls.updateOne({shortCode},{$inc:{clicks:Number(pendingClicks)}});
+            redis.del(`clicks:${shortCode}`);
+            console.log(`${Number(pendingClicks)} pending clicks deleted for ${shortCode}`);
+        }
+        await Urls.deleteOne({shortCode});
+        console.log("url deleted from database");
+        return res.status(200).json({
+            message:`succesfully deleted ${shortCode}`
+        });
+    }catch(error){
+        console.log("delete url conntroller error",error);
+        return res.status(500).json({
+            message:'interval server error',
+        })
+    }
+};
