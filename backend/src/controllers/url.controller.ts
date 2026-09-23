@@ -2,7 +2,7 @@ import { Request,Response } from "express";
 import {genrateShortCode} from "../utils/genrateShortCode.utils.js"
 import mongoose from "mongoose";
 import {Urls} from '../models/url.model.js';
-import { url } from "node:inspector";
+import {pool} from "../config/pg.config.js";
 import redis from "../config/redis.js";
 export const createShortUrlController = async(
     req:Request,
@@ -152,3 +152,28 @@ export const deleteUrlController = async(
         })
     }
 };
+
+export const getUserUrlsController = async(
+    req:Request,
+    res:Response
+)=>{
+    try{
+        const userId=req.userId;
+        if(!userId){
+            return res.status(400).json({
+                message:'please provide valid user id',
+            });
+        }
+
+        const result = await Urls.find({userId}).select("-_id -userId -createdAt -updatedAt -__v");
+        return res.status(200).json({
+            result,
+        });
+
+    }catch(error){
+        console.log("error",error);
+        return res.status(500).json({
+            messsage:'internal server error in get urls controller',
+        })
+    }
+}
