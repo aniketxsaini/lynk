@@ -2,7 +2,7 @@ import { Request,Response } from "express";
 import {genrateShortCode} from "../utils/genrateShortCode.utils.js"
 import mongoose from "mongoose";
 import {Urls} from '../models/url.model.js';
-import { url } from "node:inspector";
+import {pool} from "../config/pg.config.js";
 import redis from "../config/redis.js";
 export const createShortUrlController = async(
     req:Request,
@@ -100,3 +100,80 @@ export const urlRedirectController = async(
         });
     }
 };
+
+export const deleteUrlController = async(
+    req:Request,
+    res:Response
+)=>{
+    try{
+        const shortCode = req.params.shortCode;
+        const userId = req.userId;
+        if(!shortCode){
+            return res.status(400).json({
+                message:'please provide url id to delete',
+            });
+        }
+        if(!userId){
+            return res.status(400).json({
+                message:"authentication required please loggin",
+            })
+        }
+        const url = await Urls.findOne({shortCode});
+        if(!url){
+            return res.status(400).json({
+                message:"given url not found",
+            });
+        }
+        if(userId!==url.userId){
+            return res.status(400).json({
+                message:"you are not authorized to perform this task",
+            });
+        }
+        const redisCache = await redis.get(`url:${shortCode}`);
+        if(redisCache){
+            await redis.del(`url:${shortCode}`);
+            console.log(`cache deleted ${redisCache}`);
+        }
+        const pendingClicks=await redis.get(`clicks:${shortCode}`);
+        if(pendingClicks){
+            await Urls.updateOne({shortCode},{$inc:{clicks:Number(pendingClicks)}});
+            redis.del(`clicks:${shortCode}`);
+            console.log(`${Number(pendingClicks)} pending clicks deleted for ${shortCode}`);
+        }
+        await Urls.deleteOne({shortCode});
+        console.log("url deleted from database");
+        return res.status(200).json({
+            message:`succesfully deleted ${shortCode}`
+        });
+    }catch(error){
+        console.log("delete url conntroller error",error);
+        return res.status(500).json({
+            message:'interval server error',
+        })
+    }
+};
+
+export const getUserUrlsController = async(
+    req:Request,
+    res:Response
+)=>{
+    try{
+        const userId=req.userId;
+        if(!userId){
+            return res.status(400).json({
+                message:'please provide valid user id',
+            });
+        }
+
+        const result = await Urls.find({userId}).select("-_id -userId -createdAt -updatedAt -__v");
+        return res.status(200).json({
+            result,
+        });
+
+    }catch(error){
+        console.log("error",error);
+        return res.status(500).json({
+            messsage:'internal server error in get urls controller',
+        })
+    }
+}
