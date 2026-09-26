@@ -45,5 +45,5 @@ USER node
 # Expose backend port
 EXPOSE 3000
 
-# Start production server
-CMD ["node", "dist/server.js"]
+# Run migrations and start production server
+CMD ["sh", "-c", "node dist/db/migrate.js && node dist/server.js"]

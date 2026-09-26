@@ -1,7 +1,4 @@
-package.json
-package-lock.json
-node_modules
+node_modules/
 .env
-tsconfig.json
 dist/
-.vscode
+.vscode/
