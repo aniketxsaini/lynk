@@ -11,7 +11,7 @@ const serverStart = async()=>{
     await pool.connect();
     await connectToMongoDB();
     await redis.connect();
-
+    job.start();
     setInterval(syncPendingClicks,30_000);
 
     app.listen(PORT,()=>{
