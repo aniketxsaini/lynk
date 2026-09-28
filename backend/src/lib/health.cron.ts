@@ -1,7 +1,7 @@
 import cron from "node-cron";
 console.log("health.cron.ts loaded");
 
-export const job = cron.createTask("*/12 * * * *", async () => {
+export const job = cron.createTask("*/1 * * * *", async () => {
     console.log("CRON FIRED");
 
     try {
