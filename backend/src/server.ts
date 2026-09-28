@@ -3,6 +3,7 @@ import {connectToMongoDB} from "./config/mongodb.config.js";
 import {pool} from "./config/pg.config.js";
 import redis from "./config/redis.js";
 import {syncPendingClicks} from "./services/clickSync.service.js"
+import {job} from "./lib/health.cron.js"
 const PORT = process.env.PORT || 3000;
 
 
