@@ -1,14 +1,18 @@
 import {Request,Response,NextFunction} from "express";
 import redis from "../config/redis.js";
 
-const WINDOW_SIZE=60;
-const MAX_REQUESTS=1000;
+const WINDOW_SIZE = Number(process.env.RATE_LIMIT_WINDOW) || 60;
+const MAX_REQUESTS = Number(process.env.RATE_LIMIT_MAX) || 1000;
+const DISABLE_RATE_LIMIT = process.env.DISABLE_RATE_LIMIT === "true";
 
-export const rateLimiterMiddleware = async(
-    req:Request,
-    res:Response,
-    next:NextFunction
-)=>{
+export const rateLimiterMiddleware = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    if (DISABLE_RATE_LIMIT) {
+        return next();
+    }
     try{
         const ip=req.ip;
         if(!ip){

@@ -10,7 +10,11 @@
     "start": "node dist/server.js",
     "start:prod": "node dist/db/migrate.js && node dist/server.js",
     "migrate": "tsx src/db/migrate.ts",
-    "migrate:prod": "node dist/db/migrate.js"
+    "migrate:prod": "node dist/db/migrate.js",
+    "bench:seed": "tsx scripts/seed-benchmarks.ts seed",
+    "bench:warm": "tsx scripts/seed-benchmarks.ts warm",
+    "bench:clear": "tsx scripts/seed-benchmarks.ts clear-cache",
+    "bench:clean": "tsx scripts/seed-benchmarks.ts cleanup"
   },
   "keywords": [],
   "author": "",

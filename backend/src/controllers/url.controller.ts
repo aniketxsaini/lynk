@@ -55,48 +55,51 @@ export const createShortUrlController = async(
     }
 };
 
-export const urlRedirectController = async(
-    req:Request,
-    res:Response
-)=>{
-    try{
-        const shortCode=req.params.shortCode;
-        if(!shortCode){
+export const urlRedirectController = async (
+    req: Request,
+    res: Response
+) => {
+    try {
+        const shortCode = req.params.shortCode;
+        if (!shortCode) {
             return res.status(400).json({
-                message:"Short code is required",
+                message: "Short code is required",
             });
         }
-        const cachedUrl = await redis.get(`url:${shortCode}`);
-        if(cachedUrl){
-            console.log(`redis cache HIT url:${shortCode}`);
-            await redis.incr(`clicks:${shortCode}`);
-            await redis.sAdd("pending:clicks",shortCode);
-            return res.redirect(cachedUrl!);
-        }else{
-            console.log(`redis cache MISS url:${shortCode}`)
-        }
-        const url = await Urls.findOne({shortCode:shortCode});
-        if(!url){
-            return res.status(401).json({
-                message:"Short URL not found",
-            });
-        }
-        await redis.set(
-            `url:${shortCode}`,
-            url.originalUrl!,
-            {
-                EX:86400,
-            }
-        )
-        await redis.incr(`clicks:${shortCode}`);
-        await redis.sAdd("pending:clicks",shortCode);
-        console.log(url.originalUrl);
-        return res.redirect(url.originalUrl!);
 
-    }catch(error){
-        console.log("url redirect logic error");
+        // 1. Check Redis cache first (Cache-Aside pattern)
+        const cachedUrl = await redis.get(`url:${shortCode}`);
+
+        if (cachedUrl) {
+            // Pipeline analytics updates into a single Redis round-trip
+            const multi = redis.multi();
+            multi.incr(`clicks:${shortCode}`);
+            multi.sAdd("pending:clicks", shortCode);
+            await multi.exec();
+
+            return res.redirect(cachedUrl);
+        }
+
+        // 2. Cache Miss: Query Database
+        const url = await Urls.findOne({ shortCode: shortCode });
+        if (!url) {
+            return res.status(404).json({
+                message: "Short URL not found",
+            });
+        }
+
+        // 3. Populate Cache and update analytics via pipeline
+        const multi = redis.multi();
+        multi.set(`url:${shortCode}`, url.originalUrl!, { EX: 86400 });
+        multi.incr(`clicks:${shortCode}`);
+        multi.sAdd("pending:clicks", shortCode);
+        await multi.exec();
+
+        return res.redirect(url.originalUrl!);
+    } catch (error) {
+        console.error("url redirect logic error", error);
         return res.status(500).json({
-            message:"internal server error",
+            message: "internal server error",
         });
     }
 };
