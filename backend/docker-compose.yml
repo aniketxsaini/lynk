@@ -40,10 +40,23 @@ services:
     networks:
       - lynk_network
 
+  mongo:
+    image: mongo:9
+    container_name: lynk_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+    - lynk_network
+
 networks:
   lynk_network:
     driver: bridge
 
 volumes:
   redis_data:
+    driver: local
+  mongo_data:
     driver: local
