@@ -54,7 +54,7 @@ export const createShortUrlController = async(
         });
     }
 };
-
+//modifing the redirect logic for testing purposes
 export const urlRedirectController = async(
     req:Request,
     res:Response
