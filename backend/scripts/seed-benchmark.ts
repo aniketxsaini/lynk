@@ -92,7 +92,7 @@ async function main(){
             const shortCodes:string[]=JSON.parse(fs.readFileSync("OUTPUT_FILE","utf-8"));
             const multi=redis.multi();
             for(let code of shortCodes){
-                multi.del(`urls:${code}`);
+                multi.del(`url:${code}`);
                 multi.del(`clicks:${code}`);
             }
             await multi.exec();

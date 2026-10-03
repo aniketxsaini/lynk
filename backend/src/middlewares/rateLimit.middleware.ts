@@ -1,14 +1,19 @@
+import dotenv from "dotenv";
+dotenv.config();
 import {Request,Response,NextFunction} from "express";
 import redis from "../config/redis.js";
 
-const WINDOW_SIZE=60;
-const MAX_REQUESTS=1000;
-
+const WINDOW_SIZE:number=Number(process.env.RATE_LIMIT_WINDOW);
+const MAX_REQUESTS:number=Number(process.env.RATE_LIMIT_MAX);
+const DISABLE_RATE_LIMIT:string=String(process.env.DISABLE_RATE_LIMIT);
 export const rateLimiterMiddleware = async(
     req:Request,
     res:Response,
     next:NextFunction
 )=>{
+    if(DISABLE_RATE_LIMIT){
+        return next();
+    }
     try{
         const ip=req.ip;
         if(!ip){

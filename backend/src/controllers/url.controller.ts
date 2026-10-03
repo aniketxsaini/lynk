@@ -55,6 +55,7 @@ export const createShortUrlController = async(
     }
 };
 //modifing the redirect logic for testing purposes
+const DISABLE_CACHE= process.env.DISABLE_CACHE;
 export const urlRedirectController = async(
     req:Request,
     res:Response
@@ -66,21 +67,28 @@ export const urlRedirectController = async(
                 message:"Short code is required",
             });
         }
-        const cachedUrl = await redis.get(`url:${shortCode}`);
-        if(cachedUrl){
-            console.log(`redis cache HIT url:${shortCode}`);
-            await redis.incr(`clicks:${shortCode}`);
-            await redis.sAdd("pending:clicks",shortCode);
-            return res.redirect(cachedUrl!);
-        }else{
-            console.log(`redis cache MISS url:${shortCode}`)
+        if(!DISABLE_CACHE){
+            const cachedUrl = await redis.get(`url:${shortCode}`);
+                if(cachedUrl){
+                    console.log(`redis cache HIT url:${shortCode}`);
+                    const multi = redis.multi();
+                    multi.incr(`clicks:${shortCode}`);
+                    multi.sAdd("pending:clicks",shortCode);
+                    await multi.exec();
+                    return res.redirect(cachedUrl!);
+                    
+                }else{
+                    console.log(`redis cache MISS url:${shortCode}`)
+                }
         }
+       
         const url = await Urls.findOne({shortCode:shortCode});
         if(!url){
             return res.status(401).json({
                 message:"Short URL not found",
             });
         }
+/*        
         await redis.set(
             `url:${shortCode}`,
             url.originalUrl!,
@@ -90,7 +98,7 @@ export const urlRedirectController = async(
         )
         await redis.incr(`clicks:${shortCode}`);
         await redis.sAdd("pending:clicks",shortCode);
-        console.log(url.originalUrl);
+*/  
         return res.redirect(url.originalUrl!);
 
     }catch(error){
