@@ -3,7 +3,7 @@ import {check} from "k6";
 const shortCodes=JSON.parse(open("./test-shortCode.json"));
 
 const BASE_URL = "http://localhost:3000";
-const TEST_USERS=200;
+const TEST_USERS=100;
 const TEST_DURATION="60s"
 
 export const options={
