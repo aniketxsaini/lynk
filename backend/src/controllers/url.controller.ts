@@ -1,25 +1,25 @@
-import { Request,Response } from "express";
-import {genrateShortCode} from "../utils/genrateShortCode.utils.js"
+import { Request, Response } from "express";
+import { genrateShortCode } from "../utils/genrateShortCode.utils.js"
 import mongoose from "mongoose";
-import {Urls} from '../models/url.model.js';
-import {pool} from "../config/pg.config.js";
+import { Urls } from '../models/url.model.js';
+import { pool } from "../config/pg.config.js";
 import redis from "../config/redis.js";
-export const createShortUrlController = async(
-    req:Request,
-    res:Response
-)=>{
-    try{
+export const createShortUrlController = async (
+    req: Request,
+    res: Response
+) => {
+    try {
         const userId = req.userId;
-        if(!userId){
+        if (!userId) {
             return res.status(401).json({
-                message:"user not defined please try again",
+                message: "user not defined please try again",
             });
         }
-        let {originalUrl} = req.body;
-        
-        if(!originalUrl){
+        let { originalUrl } = req.body;
+
+        if (!originalUrl) {
             return res.status(401).json({
-                message:"please provide with a url to short",
+                message: "please provide with a url to short",
             });
         }
 
@@ -27,7 +27,7 @@ export const createShortUrlController = async(
             originalUrl = "https://" + originalUrl;
         }
         const shortCode = genrateShortCode();
-        
+
         const newUrl = new Urls({
             originalUrl,
             shortCode,
@@ -38,150 +38,140 @@ export const createShortUrlController = async(
             `url:${shortCode}`,
             originalUrl!,
             {
-                EX:86400,
+                EX: 86400,
             }
         );
 
         console.log(newUrl);
 
         return res.status(201).json({
-            message:`${shortCode} generated\n `,
+            message: `${shortCode} generated\n `,
         });
-    }catch(error){
-        console.log("url controller error",error);
+    } catch (error) {
+        console.log("url controller error", error);
         return res.status(500).json({
-            message:"internal server error",
+            message: "internal server error",
         });
     }
 };
 //modifing the redirect logic for testing purposes
-const DISABLE_CACHE= process.env.DISABLE_CACHE;
-export const urlRedirectController = async(
-    req:Request,
-    res:Response
-)=>{
-    try{
-        const shortCode=req.params.shortCode;
-        if(!shortCode){
+const DISABLE_CACHE = process.env.DISABLE_CACHE === "true";
+export const urlRedirectController = async (
+    req: Request,
+    res: Response
+) => {
+    try {
+        const shortCode = req.params.shortCode;
+        if (!shortCode) {
             return res.status(400).json({
-                message:"Short code is required",
+                message: "Short code is required",
             });
         }
-        if(!DISABLE_CACHE){
+        if (!DISABLE_CACHE) {
             const cachedUrl = await redis.get(`url:${shortCode}`);
-                if(cachedUrl){
-                    console.log(`redis cache HIT url:${shortCode}`);
-                    const multi = redis.multi();
-                    multi.incr(`clicks:${shortCode}`);
-                    multi.sAdd("pending:clicks",shortCode);
-                    await multi.exec();
-                    return res.redirect(cachedUrl!);
-                    
-                }else{
-                    console.log(`redis cache MISS url:${shortCode}`)
-                }
+            if (cachedUrl) {
+                console.log(`redis cache HIT url:${shortCode}`);
+                const multi = redis.multi();
+                multi.incr(`clicks:${shortCode}`);
+                multi.sAdd("pending:clicks", shortCode);
+                await multi.exec();
+                return res.redirect(cachedUrl!);
+            } else {
+                console.log(`redis cache MISS url:${shortCode}`)
+            }
         }
-       
-        const url = await Urls.findOne({shortCode:shortCode});
-        if(!url){
+        const url = await Urls.findOne({ shortCode: shortCode });
+        if (!url) {
             return res.status(401).json({
-                message:"Short URL not found",
+                message: "Short URL not found",
             });
         }
-/*        
-        await redis.set(
-            `url:${shortCode}`,
-            url.originalUrl!,
-            {
-                EX:86400,
-            }
-        )
+        await redis.set(`url:${shortCode}`, url.originalUrl!, { EX: 86400 });
         await redis.incr(`clicks:${shortCode}`);
-        await redis.sAdd("pending:clicks",shortCode);
-*/  
+        await redis.sAdd("pending:clicks", shortCode);
         return res.redirect(url.originalUrl!);
 
-    }catch(error){
+    } catch (error) {
         console.log("url redirect logic error");
         return res.status(500).json({
-            message:"internal server error",
+            message: "internal server error",
         });
     }
 };
 
-export const deleteUrlController = async(
-    req:Request,
-    res:Response
-)=>{
-    try{
+export const deleteUrlController = async (
+    req: Request,
+    res: Response
+) => {
+    try {
         const shortCode = req.params.shortCode;
         const userId = req.userId;
-        if(!shortCode){
+        if (!shortCode) {
             return res.status(400).json({
-                message:'please provide url id to delete',
+                message: 'please provide url id to delete',
             });
         }
-        if(!userId){
+        if (!userId) {
             return res.status(400).json({
-                message:"authentication required please loggin",
+                message: "authentication required please loggin",
             })
         }
-        const url = await Urls.findOne({shortCode});
-        if(!url){
+        const url = await Urls.findOne({ shortCode });
+        if (!url) {
             return res.status(400).json({
-                message:"given url not found",
+                message: "given url not found",
             });
         }
-        if(userId!==url.userId){
+        if (userId !== url.userId) {
             return res.status(400).json({
-                message:"you are not authorized to perform this task",
+                message: "you are not authorized to perform this task",
             });
         }
         const redisCache = await redis.get(`url:${shortCode}`);
-        if(redisCache){
+        if (redisCache) {
             await redis.del(`url:${shortCode}`);
             console.log(`cache deleted ${redisCache}`);
         }
-        const pendingClicks=await redis.get(`clicks:${shortCode}`);
-        if(pendingClicks){
-            await Urls.updateOne({shortCode},{$inc:{clicks:Number(pendingClicks)}});
+        const pendingClicks = await redis.get(`clicks:${shortCode}`);
+        if (pendingClicks) {
+            await Urls.updateOne({ shortCode }, { $inc: { clicks: Number(pendingClicks) } });
             redis.del(`clicks:${shortCode}`);
             console.log(`${Number(pendingClicks)} pending clicks deleted for ${shortCode}`);
         }
-        await Urls.deleteOne({shortCode});
+        await Urls.deleteOne({ shortCode });
         console.log("url deleted from database");
         return res.status(200).json({
-            message:`succesfully deleted ${shortCode}`
+            message: `succesfully deleted ${shortCode}`
         });
-    }catch(error){
-        console.log("delete url conntroller error",error);
+    } catch (error) {
+        console.log("delete url conntroller error", error);
         return res.status(500).json({
-            message:'interval server error',
+            message: 'interval server error',
         })
     }
 };
 
-export const getUserUrlsController = async(
-    req:Request,
-    res:Response
-)=>{
-    try{
-        const userId=req.userId;
-        if(!userId){
+export const getUserUrlsController = async (
+    req: Request,
+    res: Response
+) => {
+    try {
+        const userId = req.userId;
+        if (!userId) {
             return res.status(400).json({
-                message:'please provide valid user id',
+                message: 'please provide valid user id',
             });
         }
 
-        const result = await Urls.find({userId}).select("-_id -userId -createdAt -updatedAt -__v");
+        const result = await Urls.find({ userId }).select("-_id -userId -createdAt -updatedAt -__v");
         return res.status(200).json({
             result,
         });
 
-    }catch(error){
-        console.log("error",error);
+    } catch (error) {
+        console.log("error", error);
         return res.status(500).json({
-            messsage:'internal server error in get urls controller',
+            messsage: 'internal server error in get urls controller',
         })
     }
 }
