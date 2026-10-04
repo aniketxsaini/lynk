@@ -15,6 +15,9 @@ services:
       - PORT=3000
       # Points to the redis service container within the docker network
       - REDIS_URL=redis://redis:6379
+      - MONGODB_URI=mongodb://mongodb:27017/lynk
+    volumes:
+      - ./scripts:/app/scripts
     depends_on:
       redis:
         condition: service_healthy

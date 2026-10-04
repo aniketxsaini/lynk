@@ -13,7 +13,7 @@
     "migrate:prod": "node dist/db/migrate.js",
     "bench:seed": "tsx scripts/seed-benchmark.ts seed",
     "bench:warm": "tsx scripts/seed-benchmark.ts warm",
-    "bench:clear": "tsx scripts/seed-benchmark.ts clean-cache",
+    "bench:clear": "tsx scripts/seed-benchmark.ts clear-cache",
     "bench:cleanup": "tsx scripts/seed-benchmark.ts cleanup"
   },
   "keywords": [],
