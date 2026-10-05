@@ -354,6 +354,12 @@ A `p(95)<100ms` threshold is configured as a performance guardrail.
 
 # 🛠️ Reproducing the Benchmark
 
+Clone branch
+
+```bash
+git clone --branch performance_testing https://github.com/aniketxsaini/lynk.git
+```
+
 Start infrastructure:
 
 ```bash
@@ -489,25 +495,6 @@ Both paths show diminishing returns once their throughput ceiling is approached.
 
 ---
 
-# 📌 Recruiter-Friendly Summary
-
-> **I benchmarked Lynk's URL redirect path under 100 and 200 concurrent virtual users using k6, with the backend, Redis, and MongoDB running in Docker. Using the same 500-URL workload, the Redis-backed path sustained ~5.7k req/s compared with ~2.3k req/s for MongoDB — approximately 2.4–2.5× higher throughput. Redis also reduced average and P95 latency by roughly 58–60%, while all four benchmark runs maintained 0% HTTP failures.**
-
-### Demonstrated engineering areas
-
-- Redis caching
-- MongoDB
-- Node.js / Express
-- TypeScript
-- Docker / Docker Compose
-- k6 load testing
-- Concurrent workload design
-- Latency percentile analysis
-- Throughput analysis
-- Performance bottleneck identification
-- Cache-backed system architecture
-
----
 
 # 📋 Final Results at a Glance
 
