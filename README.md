@@ -208,7 +208,7 @@ http://localhost:3000
 Using Docker:
 
 ```bash
-git clone <your-repo-url>
+git clone https:github.com/aniketxsaini/lynk
 cd backend
 
 cp .env.example .env
