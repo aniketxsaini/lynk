@@ -127,15 +127,15 @@ src/
 ```json
 // Request Body
 {
-  "username": "aniket",
-  "email": "aniket@example.com",
+  "username": "alex",
+  "email": "alex@example.com",
   "password": "securepassword"
 }
 
 // 201 Response
 {
   "message": "user registered successfully",
-  "user": { "id": "uuid", "username": "aniket", "email": "aniket@example.com" },
+  "user": { "id": "uuid", "username": "alex", "email": "alex@example.com" },
   "token": "<jwt>"
 }
 ```
@@ -143,12 +143,12 @@ src/
 #### `POST /user/login`
 ```json
 // Request Body
-{ "email": "aniket@example.com", "password": "securepassword" }
+{ "email": "alex@example.com", "password": "securepassword" }
 
 // 200 Response
 {
   "message": "loggin successful",
-  "user": { "id": "uuid", "username": "aniket", "email": "aniket@example.com" },
+  "user": { "id": "uuid", "username": "alex", "email": "alex@example.com" },
   "token": "<jwt>"
 }
 ```
@@ -189,6 +189,274 @@ All write/read-your-own endpoints require `Authorization: Bearer <token>`.
 }
 ```
 
+
+---
+
+## 🧪 Quick Start — Try Lynk with cURL
+
+Lynk does not currently include a frontend. You can interact with the API directly using
+`curl`, Postman, or any HTTP client.
+
+The examples below assume the API is running at:
+
+```text
+http://localhost:3000
+```
+
+### 1. Start Lynk
+
+Using Docker:
+
+```bash
+git clone <your-repo-url>
+cd backend
+
+cp .env.example .env
+# Fill in the required environment variables in .env
+
+docker compose up --build
+```
+
+The API should now be available at `http://localhost:3000`.
+
+You can verify that the server is running:
+
+```bash
+curl http://localhost:3000/health
+```
+
+Expected response:
+
+```json
+{
+  "status": "ok health check"
+}
+```
+
+---
+
+### 2. Register a User
+
+Create a user account before using the authenticated URL endpoints.
+
+```bash
+curl -X POST http://localhost:3000/user/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "demo_user",
+    "email": "demo@example.com",
+    "password": "securepassword123"
+  }'
+```
+
+Expected response:
+
+```json
+{
+  "message": "user registered successfully",
+  "user": {
+    "id": "uuid",
+    "username": "demo_user",
+    "email": "demo@example.com"
+  },
+  "token": "<jwt>"
+}
+```
+
+> Save the returned JWT. The token is required for the authenticated URL endpoints.
+
+For convenience, set it as an environment variable:
+
+```bash
+TOKEN="<jwt>"
+```
+
+---
+
+### 3. Login
+
+If the user already exists, you can obtain a fresh JWT with:
+
+```bash
+curl -X POST http://localhost:3000/user/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "demo@example.com",
+    "password": "securepassword123"
+  }'
+```
+
+Expected response:
+
+```json
+{
+  "message": "loggin successful",
+  "user": {
+    "id": "uuid",
+    "username": "demo_user",
+    "email": "demo@example.com"
+  },
+  "token": "<jwt>"
+}
+```
+
+Then:
+
+```bash
+TOKEN="<jwt>"
+```
+
+---
+
+### 4. Create a Short URL
+
+Create a short URL using the JWT from registration or login:
+
+```bash
+curl -X POST http://localhost:3000/api/short \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "originalUrl": "https://github.com/alexxsaini"
+  }'
+```
+
+Expected response:
+
+```json
+{
+  "message": "aB3xYz generated"
+}
+```
+
+The generated value (`aB3xYz` in the example) is the `shortCode`.
+
+> Replace `aB3xYz` in the commands below with the actual short code returned by your API.
+
+---
+
+### 5. Resolve / Redirect a Short URL
+
+The redirect endpoint does **not** require authentication.
+
+```bash
+curl -i http://localhost:3000/api/get/aB3xYz
+```
+
+You should receive an HTTP redirect:
+
+```text
+HTTP/1.1 302 Found
+Location: https://github.com/alexxsaini
+```
+
+To prevent `curl` from following the redirect automatically, use:
+
+```bash
+curl -I http://localhost:3000/api/get/aB3xYz
+```
+
+This endpoint is the latency-sensitive path where Lynk uses Redis as its cache.
+
+It is also protected by the Redis-backed rate limiter:
+
+```text
+1000 requests / 60 seconds / IP
+```
+
+---
+
+### 6. List Your Lynks
+
+Retrieve the URLs belonging to the authenticated user:
+
+```bash
+curl http://localhost:3000/api/mylynks \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Expected response:
+
+```json
+{
+  "result": [
+    {
+      "originalUrl": "https://github.com/alexxsaini",
+      "shortCode": "aB3xYz",
+      "clicks": 42
+    }
+  ]
+}
+```
+
+The `clicks` value is updated asynchronously. Lynk increments click counters in Redis
+during redirects and periodically flushes the pending counts into MongoDB.
+
+---
+
+### 7. Delete a Short URL
+
+Delete a URL belonging to the authenticated user:
+
+```bash
+curl -X DELETE http://localhost:3000/api/delete/aB3xYz \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Replace `aB3xYz` with the actual short code you created.
+
+---
+
+## 🔄 Complete cURL Workflow
+
+If you just want to test Lynk from start to finish:
+
+```bash
+# 1. Register
+curl -X POST http://localhost:3000/user/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "demo_user",
+    "email": "demo@example.com",
+    "password": "securepassword123"
+  }'
+
+# 2. Set the JWT returned by the previous request
+TOKEN="<jwt>"
+
+# 3. Create a short URL
+curl -X POST http://localhost:3000/api/short \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "originalUrl": "https://github.com/alexxsaini"
+  }'
+
+# 4. Resolve it
+curl -I http://localhost:3000/api/get/<shortCode>
+
+# 5. View your Lynks
+curl http://localhost:3000/api/mylynks \
+  -H "Authorization: Bearer $TOKEN"
+
+# 6. Delete it
+curl -X DELETE http://localhost:3000/api/delete/<shortCode> \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Endpoint Summary
+
+| Method | Endpoint | Auth | Try it |
+|---|---|---|---|
+| `GET` | `/health` | ❌ | Check API status |
+| `POST` | `/user/register` | ❌ | Create an account |
+| `POST` | `/user/login` | ❌ | Get a JWT |
+| `POST` | `/api/short` | ✅ | Create a short URL |
+| `GET` | `/api/get/:shortCode` | ❌ | Redirect to original URL |
+| `GET` | `/api/mylynks` | ✅ | List your URLs |
+| `DELETE` | `/api/delete/:shortCode` | ✅ | Delete a URL |
+
+
 ---
 
 ## 🗄️ Data Models
@@ -225,7 +493,7 @@ Spins up the API + Redis in a single command. You supply your own PostgreSQL (Ne
 
 ```bash
 # 1. Clone and enter the repo
-git clone https://github.com/aniketxsaini/lynk
+git clone <your-repo-url>
 cd backend
 
 # 2. Copy and fill in environment variables
@@ -271,15 +539,6 @@ npm run dev
 | `REDIS_URL` | Redis connection URL |
 
 See [`.env.example`](./.env.example) for the full template.
-
----
-
-## 🏥 Health Check
-
-```
-GET /health
-→ { "status": "ok health check" }
-```
 
 ---
 
